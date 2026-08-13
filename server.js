@@ -5,6 +5,7 @@ const cors = require("cors");
 const authRoutes = require("./routes/auth");
 const userRoutes = require("./routes/user");
 const promptRoutes = require("./routes/prompts");
+const adminRoutes = require("./routes/admin");
 
 const app = express();
 
@@ -25,6 +26,7 @@ app.get("/api/health", (req, res) => res.json({ ok: true }));
 app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/prompts", promptRoutes);
+app.use("/api/admin", adminRoutes);
 
 // จัดการ error ที่ไม่ได้ดักไว้ ไม่ให้ server ล่มเงียบๆ
 app.use((err, req, res, next) => {
