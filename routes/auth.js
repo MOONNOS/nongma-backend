@@ -42,19 +42,20 @@ router.post("/signup", authLimiter, async (req, res) => {
     .prepare("SELECT id FROM users WHERE email = ? OR username = ?")
     .get(email.toLowerCase(), username);
   if (existing) {
-    return res.status(409).json({ error: "อีเมลหรือชื่อผู้ใช้นี้ถูกใช้แล้ว" });
+    return res.status(409).json({ error: "อีเมลหรือชื่อผูใช้นี้ถูกใช้แล้ว" });
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
 
+  // สมาชิกใหม่ทุกคนเริ่มที่ LV1 เสมอ ไม่มีทางตั้ง LV เองตอนสมัคร
   const result = db
-    .prepare("INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)")
+    .prepare("INSERT INTO users (username, email, password_hash, level) VALUES (?, ?, ?, 1)")
     .run(username, email.toLowerCase(), passwordHash);
 
   const token = signToken(result.lastInsertRowid);
   res.status(201).json({
     token,
-    user: { id: result.lastInsertRowid, username, email: email.toLowerCase(), points: 0 },
+    user: { id: result.lastInsertRowid, username, email: email.toLowerCase(), level: 1 },
   });
 });
 
@@ -77,7 +78,7 @@ router.post("/login", authLimiter, async (req, res) => {
   const token = signToken(user.id);
   res.json({
     token,
-    user: { id: user.id, username: user.username, email: user.email, points: user.points },
+    user: { id: user.id, username: user.username, email: user.email, level: user.level },
   });
 });
 
