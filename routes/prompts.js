@@ -1,51 +1,33 @@
 const express = require("express");
 const db = require("../db");
-const { requireAuth } = require("../middleware/auth");
-const { getLevelInfo, POINTS_PER_PROMPT_COPY } = require("../lib/levels");
+const { optionalAuth } = require("../middleware/auth");
 
 const router = express.Router();
 
-router.get("/", (req, res) => {
-  const prompts = db.prepare("SELECT * FROM prompts").all();
-  res.json(prompts);
-});
-
-// เรียก endpoint นี้ทุกครั้งที่ผู้ใช้กดปุ่ม "คัดลอก" prompt ฝั่ง frontend
-// ให้แต้มเฉพาะครั้งแรกที่ user คนนั้นคัดลอก prompt อันนี้ กันการยิงซ้ำเพื่อฟาร์มแต้ม
-router.post("/:promptId/copy", requireAuth, (req, res) => {
-  const { promptId } = req.params;
-
-  const prompt = db.prepare("SELECT id FROM prompts WHERE id = ?").get(promptId);
-  if (!prompt) return res.status(404).json({ error: "ไม่พบ prompt นี้" });
-
-  const already = db
-    .prepare("SELECT id FROM prompt_copies WHERE user_id = ? AND prompt_id = ?")
-    .get(req.userId, promptId);
-
-  let pointsAwarded = 0;
-
-  if (!already) {
-    const tx = db.transaction(() => {
-      db.prepare("INSERT INTO prompt_copies (user_id, prompt_id) VALUES (?, ?)").run(
-        req.userId,
-        promptId
-      );
-      db.prepare("UPDATE users SET points = points + ? WHERE id = ?").run(
-        POINTS_PER_PROMPT_COPY,
-        req.userId
-      );
-    });
-    tx();
-    pointsAwarded = POINTS_PER_PROMPT_COPY;
+// ทุกคนเห็นการ์ดทั้งหมด แต่เนื้อหา prompt_text จะถูกซ่อนถ้า LV ไม่ถึงเกณฑ
+router.get("/", optionalAuth, (req, res) => {
+  let userLevel = 1;
+  if (req.userId) {
+    const user = db.prepare("SELECT level FROM users WHERE id = ?").get(req.userId);
+    if (user) userLevel = user.level;
   }
 
-  const user = db.prepare("SELECT points FROM users WHERE id = ?").get(req.userId);
+  const prompts = db.prepare("SELECT * FROM prompts").all();
 
-  res.json({
-    pointsAwarded,
-    alreadyCopiedBefore: Boolean(already),
-    ...getLevelInfo(user.points),
+  const result = prompts.map((p) => {
+    const unlocked = userLevel >= p.level_required;
+    return {
+      id: p.id,
+      category: p.category,
+      title: p.title,
+      description: p.description,
+      level_required: p.level_required,
+      unlocked,
+      prompt_text: unlocked ? p.prompt_text : null,
+    };
   });
+
+  res.json(result);
 });
 
 module.exports = router;
