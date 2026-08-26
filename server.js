@@ -6,6 +6,8 @@ const authRoutes = require("./routes/auth");
 const userRoutes = require("./routes/user");
 const promptRoutes = require("./routes/prompts");
 const adminRoutes = require("./routes/admin");
+const packageRoutes = require("./routes/packages");
+const orderRoutes = require("./routes/orders");
 
 const app = express();
 
@@ -14,11 +16,7 @@ const allowedOrigins = (process.env.CORS_ORIGIN || "")
   .map((s) => s.trim())
   .filter(Boolean);
 
-app.use(
-  cors({
-    origin: allowedOrigins.length ? allowedOrigins : true,
-  })
-);
+app.use(cors({ origin: allowedOrigins.length ? allowedOrigins : true }));
 app.use(express.json());
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));
@@ -27,8 +25,9 @@ app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/prompts", promptRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/packages", packageRoutes);
+app.use("/api/orders", orderRoutes);
 
-// จัดการ error ที่ไม่ได้ดักไว้ ไม่ให้ server ล่มเงียบๆ
 app.use((err, req, res, next) => {
   console.error(err);
   res.status(500).json({ error: "เกิดข้อผิดพลาดที่เซิร์ฟเวอร์" });
