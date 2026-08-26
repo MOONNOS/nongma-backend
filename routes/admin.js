@@ -77,4 +77,52 @@ router.get("/add-prompt", (req, res) => {
   res.json({ ok: true, message: `เพิ่ม/อัปเดต prompt "${title}" สำเร็จ` });
 });
 
+// ดูรายการ Order ที่รออนุมัติทั้งหมด
+router.get("/pending-orders", (req, res) => {
+  if (!checkKey(req, res)) return;
+  const orders = db.prepare(`
+    SELECT o.id, o.status, o.created_at, u.username, u.email, p.name AS package_name, p.price, p.level
+    FROM orders o
+    JOIN users u ON o.user_id = u.id
+    JOIN packages p ON o.package_id = p.id
+    WHERE o.status = 'pending'
+    ORDER BY o.created_at ASC
+  `).all();
+  res.json(orders);
+});
+
+// อนุมัติ Order → อัปเกรด Level ให้ลูกค้าอัตโนมัติ
+router.get("/approve-order", (req, res) => {
+  if (!checkKey(req, res)) return;
+  const { orderId } = req.query;
+  if (!orderId) return res.status(400).json({ error: "ต้องระบุ orderId" });
+
+  const order = db.prepare("SELECT * FROM orders WHERE id = ?").get(orderId);
+  if (!order) return res.status(404).json({ error: "ไม่พบคำสั่งซื้อนี้" });
+  if (order.status !== "pending") return res.status(400).json({ error: "คำสั่งซื้อนี้ถูกดำเนินการไปแล้ว" });
+
+  const pkg = db.prepare("SELECT * FROM packages WHERE id = ?").get(order.package_id);
+
+  const tx = db.transaction(() => {
+    db.prepare("UPDATE orders SET status = 'approved', approved_at = datetime('now') WHERE id = ?").run(orderId);
+    db.prepare("UPDATE users SET level = ? WHERE id = ? AND level < ?").run(pkg.level, order.user_id, pkg.level);
+  });
+  tx();
+
+  res.json({ ok: true, message: `อนุมัติคำสั่งซื้อ #${orderId} สำเร็จ อัปเกรดลูกค้าเป็น ${pkg.name} (LV${pkg.level}) แล้ว` });
+});
+
+// ปฏิเสธ Order
+router.get("/reject-order", (req, res) => {
+  if (!checkKey(req, res)) return;
+  const { orderId } = req.query;
+  if (!orderId) return res.status(400).json({ error: "ต้องระบุ orderId" });
+
+  const order = db.prepare("SELECT * FROM orders WHERE id = ?").get(orderId);
+  if (!order) return res.status(404).json({ error: "ไม่พบคำสั่งซื้อนี้" });
+
+  db.prepare("UPDATE orders SET status = 'rejected' WHERE id = ?").run(orderId);
+  res.json({ ok: true, message: `ปฏิเสธคำสั่งซื้อ #${orderId} แล้ว` });
+});
+
 module.exports = router;
