@@ -4,7 +4,6 @@ const { optionalAuth } = require("../middleware/auth");
 
 const router = express.Router();
 
-// ทุกคนเห็นการ์ดทั้งหมด แต่ gem_url จะถูกซ่อนถ้า LV ไม่ถึงเกณฑ์
 router.get("/", optionalAuth, (req, res) => {
   let userLevel = 1;
   if (req.userId) {
@@ -15,13 +14,12 @@ router.get("/", optionalAuth, (req, res) => {
   const prompts = db.prepare("SELECT * FROM prompts").all();
 
   const result = prompts.map((p) => {
-    const unlocked = userLevel >= p.level_required;
+    const unlocked = userLevel >= 2; // LV2 ขึ้นไปเห็นได้ทั้งหมดเหมือนกัน
     return {
       id: p.id,
       category: p.category,
       title: p.title,
       description: p.description,
-      level_required: p.level_required,
       unlocked,
       gem_url: unlocked ? p.gem_url : null,
     };
