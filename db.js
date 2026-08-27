@@ -117,4 +117,38 @@ const insertAssistant = db.prepare(`
 `);
 db.transaction((rows) => { for (const row of rows) insertAssistant.run(...row); })(seedAssistants);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS courses (
+    id             TEXT PRIMARY KEY,
+    title          TEXT NOT NULL,
+    icon           TEXT NOT NULL,
+    description    TEXT,
+    lessons        TEXT,
+    level_required INTEGER NOT NULL DEFAULT 1,
+    status         INTEGER NOT NULL DEFAULT 1,
+    sort_order     INTEGER NOT NULL DEFAULT 0
+  );
+`);
+
+const seedCourses = [
+  ["course-image", "สร้างภาพด้วย AI", "🎨", "ปูพื้นฐานก่อนเริ่มทำคลิป ให้ได้ภาพสวยตรงใจทุกครั้ง",
+    JSON.stringify(["เขียน Prompt สร้างภาพให้ตรงสไตล์ที่ต้องการ", "แต่งภาพ ลบพื้นหลัง ปรับแสงด้วย AI", "สร้างภาพสินค้า โลโก้ ธัมบ์เนล"]), 1, 1, 1],
+  ["course-flow", "ทำวิดีโอด้วย Google Flow", "🎬", "แปลงไอเดียเป็นคลิปเคลื่อนไหวด้วย Prompt เดียว",
+    JSON.stringify(["เขียน Prompt วิดีโอให้ Flow เข้าใจสิ่งที่อยากได้", "ต่อหลายคลิปให้เป็นเรื่องราวเดียวกัน", "คุมมุมกล้อง แสง และอารมณ์ของฉาก"]), 1, 1, 2],
+  ["course-voice", "พากย์เสียงด้วย AI", "🎙️", "ให้คลิปมีเสียงพูด เสียงเพลง ครบโดยไม่ต้องอัดเอง",
+    JSON.stringify(["โคลนเสียงตัวเองไว้พากย์คลิปในอนาคต", "พากย์เสียงได้หลายภาษา หลายอารมณ์", "สร้างเพลงประกอบคลิปด้วย AI"]), 1, 1, 3],
+  ["course-edit", "ตัดต่อให้ดูมืออาชีพ", "✂️", "ประกอบทุกอย่างให้เป็นคลิปที่พร้อมโพสต์จริง",
+    JSON.stringify(["ตัดต่อเร็วด้วยเครื่องมือ AI ช่วยตัด", "ใส่ซับไตเติลอัตโนมัติ แก้ไขง่าย", "เพิ่มเอฟเฟกต์และจังหวะให้คลิปลื่นไหล"]), 1, 1, 4],
+];
+
+const insertCourse = db.prepare(`
+  INSERT INTO courses (id, title, icon, description, lessons, level_required, status, sort_order)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  ON CONFLICT(id) DO UPDATE SET
+    title=excluded.title, icon=excluded.icon, description=excluded.description,
+    lessons=excluded.lessons, level_required=excluded.level_required,
+    status=excluded.status, sort_order=excluded.sort_order
+`);
+db.transaction((rows) => { for (const row of rows) insertCourse.run(...row); })(seedCourses);
+
 module.exports = db;
