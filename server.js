@@ -12,6 +12,8 @@ const assistantRoutes = require("./routes/assistants");
 const courseRoutes = require("./routes/courses");
 const staffRoutes = require("./routes/staff");
 const adminPanelRoutes = require("./routes/admin-panel");
+const communityRoutes = require("./routes/community");
+const notificationRoutes = require("./routes/notifications");
 
 const app = express();
 
@@ -35,6 +37,8 @@ app.use("/api/assistants", assistantRoutes);
 app.use("/api/courses", courseRoutes);
 app.use("/api/staff", staffRoutes);
 app.use("/api/admin-panel", adminPanelRoutes);
+app.use("/api/community", communityRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 app.use((err, req, res, next) => {
   console.error(err);
