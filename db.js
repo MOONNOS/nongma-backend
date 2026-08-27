@@ -83,5 +83,38 @@ const insertPackage = db.prepare(`
     sort_order=excluded.sort_order, active=excluded.active
 `);
 db.transaction((rows) => { for (const row of rows) insertPackage.run(...row); })(seedPackages);
+// เพิ่มในไฟล์ db.js — ต่อจากตาราง packages/orders
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS ai_assistants (
+    id             TEXT PRIMARY KEY,
+    name           TEXT NOT NULL,
+    role           TEXT NOT NULL,
+    icon           TEXT NOT NULL,
+    description    TEXT,
+    level_required INTEGER NOT NULL DEFAULT 1,
+    status         INTEGER NOT NULL DEFAULT 1,
+    sort_order     INTEGER NOT NULL DEFAULT 0
+  );
+`);
+
+const seedAssistants = [
+  ["nong-lens", "น้องเลนส์", "ผู้ช่วยสร้างภาพ", "📸", "ช่วยคิด Prompt สร้างภาพให้ตรงสไตล์ที่อยากได้", 1, 1, 1],
+  ["nong-clip", "น้องคลิป", "ผู้ช่วยวิดีโอ Flow", "🎬", "แนะนำ Prompt วิดีโอและมุมกล้องให้คลิปดูโปร", 1, 1, 2],
+  ["nong-siangsai", "น้องเสียงใส", "ผู้ช่วยพากย์เสียง", "🎙️", "ช่วยเลือกโทนเสียงและแต่งเพลงประกอบคลิป", 1, 1, 3],
+  ["nong-tadtor", "น้องตัดต่อ", "ผู้ช่วยตัดต่อ", "✂️", "แนะนำจังหวะตัดต่อและเอฟเฟกต์ให้คลิปลื่นไหล", 1, 1, 4],
+  ["nong-caption", "น้องแคปชั่น", "ผู้ช่วยเขียนสคริปต์", "✍️", "ช่วยคิดแคปชั่นและสคริปต์บรรยายให้คลิปน่าติดตาม", 1, 1, 5],
+  ["nong-idea", "น้องไอเดีย", "ผู้ช่วยคิดคอนเทนต์", "💡", "ช่วยระดมไอเดียคลิปเวลาคิดหัวข้อไม่ออก", 1, 1, 6],
+];
+
+const insertAssistant = db.prepare(`
+  INSERT INTO ai_assistants (id, name, role, icon, description, level_required, status, sort_order)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  ON CONFLICT(id) DO UPDATE SET
+    name=excluded.name, role=excluded.role, icon=excluded.icon,
+    description=excluded.description, level_required=excluded.level_required,
+    status=excluded.status, sort_order=excluded.sort_order
+`);
+db.transaction((rows) => { for (const row of rows) insertAssistant.run(...row); })(seedAssistants);
 
 module.exports = db;
