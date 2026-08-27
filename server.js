@@ -9,6 +9,7 @@ const adminRoutes = require("./routes/admin");
 const packageRoutes = require("./routes/packages");
 const orderRoutes = require("./routes/orders");
 const assistantRoutes = require("./routes/assistants");
+const courseRoutes = require("./routes/courses");
 
 const app = express();
 
@@ -29,6 +30,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/packages", packageRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/assistants", assistantRoutes);
+app.use("/api/courses", courseRoutes);
 
 app.use((err, req, res, next) => {
   console.error(err);
