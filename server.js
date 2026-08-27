@@ -10,6 +10,7 @@ const packageRoutes = require("./routes/packages");
 const orderRoutes = require("./routes/orders");
 const assistantRoutes = require("./routes/assistants");
 const courseRoutes = require("./routes/courses");
+const staffRoutes = require("./routes/staff");
 
 const app = express();
 
@@ -31,6 +32,7 @@ app.use("/api/packages", packageRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/assistants", assistantRoutes);
 app.use("/api/courses", courseRoutes);
+app.use("/api/staff", staffRoutes);
 
 app.use((err, req, res, next) => {
   console.error(err);
