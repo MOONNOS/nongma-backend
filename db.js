@@ -151,4 +151,47 @@ const insertCourse = db.prepare(`
 `);
 db.transaction((rows) => { for (const row of rows) insertCourse.run(...row); })(seedCourses);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS community_links (
+    id             TEXT PRIMARY KEY,
+    platform       TEXT NOT NULL,
+    icon           TEXT NOT NULL,
+    url            TEXT NOT NULL,
+    level_required INTEGER NOT NULL DEFAULT 1,
+    sort_order     INTEGER NOT NULL DEFAULT 0
+  );
+
+  CREATE TABLE IF NOT EXISTS notifications (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    message    TEXT NOT NULL,
+    type       TEXT NOT NULL DEFAULT 'info',
+    is_read    INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS audit_logs (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    admin_id   INTEGER NOT NULL,
+    action     TEXT NOT NULL,
+    target     TEXT,
+    details    TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+`);
+
+const seedCommunity = [
+  ["community-line", "LINE Official", "💬", "https://line.me/R/ti/p/@nongmaclip", 1, 1],
+  ["community-facebook", "Facebook Group", "📘", "https://facebook.com/groups/nongmaclip", 2, 2],
+  ["community-discord", "Discord Server", "🎮", "https://discord.gg/nongmaclip", 2, 3],
+];
+const insertCommunity = db.prepare(`
+  INSERT INTO community_links (id, platform, icon, url, level_required, sort_order)
+  VALUES (?, ?, ?, ?, ?, ?)
+  ON CONFLICT(id) DO UPDATE SET
+    platform=excluded.platform, icon=excluded.icon, url=excluded.url,
+    level_required=excluded.level_required, sort_order=excluded.sort_order
+`);
+db.transaction((rows) => { for (const row of rows) insertCommunity.run(...row); })(seedCommunity);
+
 module.exports = db;
