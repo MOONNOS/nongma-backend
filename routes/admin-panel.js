@@ -12,6 +12,12 @@ function requireAdmin(req, res, next) {
   next();
 }
 
+function logAction(adminId, action, target, details) {
+  db.prepare("INSERT INTO audit_logs (admin_id, action, target, details) VALUES (?, ?, ?, ?)").run(
+    adminId, action, target, details || ""
+  );
+}
+
 router.use(requireAuth, requireAdmin);
 
 // ===== Users =====
@@ -30,6 +36,8 @@ router.patch("/users/:id/level", (req, res) => {
   if (!user) return res.status(404).json({ error: "ไม่พบผู้ใช้นี้" });
 
   db.prepare("UPDATE users SET level = ? WHERE id = ?").run(lvl, req.params.id);
+  logAction(req.userId, "CHANGE_USER_LEVEL", `user:${req.params.id}`, `เปลี่ยนเป็น LV${lvl}`);
+
   res.json({ ok: true, message: `เปลี่ยน LV ของสมาชิกนี้เป็น LV${lvl} แล้ว` });
 });
 
@@ -50,6 +58,8 @@ router.patch("/packages/:id", (req, res) => {
     active !== undefined ? (active ? 1 : 0) : pkg.active,
     req.params.id
   );
+  logAction(req.userId, "UPDATE_PACKAGE", `package:${req.params.id}`, `แก้ไข ${name ?? pkg.name}`);
+
   res.json({ ok: true, message: `อัปเดตแพ็กเกจ "${name ?? pkg.name}" สำเร็จ` });
 });
 
@@ -75,6 +85,8 @@ router.patch("/prompts/:id", (req, res) => {
     level_required ?? prompt.level_required,
     req.params.id
   );
+  logAction(req.userId, "UPDATE_PROMPT", `prompt:${req.params.id}`, `แก้ไข ${title ?? prompt.title}`);
+
   res.json({ ok: true, message: `อัปเดต "${title ?? prompt.title}" สำเร็จ` });
 });
 
@@ -87,7 +99,20 @@ router.post("/prompts", (req, res) => {
     INSERT INTO prompts (id, category, title, description, gem_url, level_required)
     VALUES (?, ?, ?, ?, ?, ?)
   `).run(id, category, title, description || "", gem_url || null, level_required || 2);
+  logAction(req.userId, "CREATE_PROMPT", `prompt:${id}`, `เพิ่ม Gem ใหม่ ${title}`);
+
   res.json({ ok: true, message: `เพิ่ม Gem "${title}" สำเร็จ` });
+});
+
+// ===== Audit Logs =====
+router.get("/audit-logs", (req, res) => {
+  const logs = db.prepare(`
+    SELECT al.*, u.username AS admin_name
+    FROM audit_logs al
+    LEFT JOIN users u ON al.admin_id = u.id
+    ORDER BY al.created_at DESC LIMIT 100
+  `).all();
+  res.json(logs);
 });
 
 module.exports = router;
