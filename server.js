@@ -1,7 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-
+const { initDb } = require("./db");
 const authRoutes = require("./routes/auth");
 const userRoutes = require("./routes/user");
 const promptRoutes = require("./routes/prompts");
@@ -16,17 +16,14 @@ const communityRoutes = require("./routes/community");
 const notificationRoutes = require("./routes/notifications");
 
 const app = express();
-
 const allowedOrigins = (process.env.CORS_ORIGIN || "")
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
-
 app.use(cors({ origin: allowedOrigins.length ? allowedOrigins : true }));
 app.use(express.json());
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));
-
 app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/prompts", promptRoutes);
@@ -46,6 +43,19 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
-  console.log(`🐶 น้องหมา backend กำลังรันที่ http://localhost:${PORT}`);
-});
+
+// ต้องรอสร้างตาราง + seed ข้อมูลบน Turso ให้เสร็จก่อน ถึงจะเริ่มรับ request ได้
+async function start() {
+  try {
+    await initDb();
+    console.log("[db] เชื่อมต่อ Turso และเตรียมตารางเรียบร้อย");
+    app.listen(PORT, () => {
+      console.log(`🐶 น้องหมา backend กำลังรันที่ http://localhost:${PORT}`);
+    });
+  } catch (err) {
+    console.error("[db] เชื่อมต่อ Turso ไม่สำเร็จ:", err);
+    process.exit(1);
+  }
+}
+
+start();
