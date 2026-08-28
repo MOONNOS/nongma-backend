@@ -19,7 +19,7 @@ router.get("/set-level", (req, res) => {
   const { email, level } = req.query;
   if (!email || !level) return res.status(400).json({ error: "ต้องระบุ email และ level" });
   const lvl = parseInt(level, 10);
-  if (![1, 2, 3, 4, 5].includes(lvl)) return res.status(400).json({ error: "level ต้องเป็นตัวเลข 1-5 เท่านั้น" });
+  if (![1, 2, 3, 4, 5, 6, 7].includes(lvl)) return res.status(400).json({ error: "level ต้องเป็นตัวเลข 1-7 เท่านั้น" });
 
   const user = db.prepare("SELECT id, username, email FROM users WHERE email = ?").get(email.toLowerCase());
   if (!user) return res.status(404).json({ error: "ไม่พบผู้ใช้ที่มีอีเมลนี้" });
