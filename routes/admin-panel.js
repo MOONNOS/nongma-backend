@@ -1,7 +1,23 @@
 const express = require("express");
-const { get, all, run } = require("../db");
+const { client, get, all, run } = require("../db");
 const { requireAuth } = require("../middleware/auth");
 const router = express.Router();
+
+// เพิ่มคอลัมน์ image_url ให้ตาราง prompts (ถ้ายังไม่มี) — ไม่กระทบข้อมูลเดิม
+(async () => {
+  try {
+    await client.execute("ALTER TABLE prompts ADD COLUMN image_url TEXT");
+    console.log("[admin-panel] เพิ่มคอลัมน์ image_url ให้ตาราง prompts แล้ว");
+  } catch (err) {
+    const msg = String((err && err.message) || err).toLowerCase();
+    if (!msg.includes("duplicate column")) {
+      console.error("[admin-panel] เพิ่มคอลัมน์ image_url ไม่สำเร็จ:", err);
+    }
+  }
+})();
+
+// หมวดหมู่ Gem ที่อนุญาต ตั้งแต่นี้ไปเพิ่ม/แก้ Gem ต้องเลือกจาก 4 ตัวนี้เท่านั้น
+const VALID_CATEGORIES = ["creative", "image", "product", "video"];
 
 async function requireAdmin(req, res, next) {
   try {
@@ -14,16 +30,13 @@ async function requireAdmin(req, res, next) {
     next(err);
   }
 }
-
 async function logAction(adminId, action, target, details) {
   await run(
     "INSERT INTO audit_logs (admin_id, action, target, details) VALUES (?, ?, ?, ?)",
     [adminId, action, target, details || ""]
   );
 }
-
 router.use(requireAuth, requireAdmin);
-
 // ===== Users =====
 router.get("/users", async (req, res, next) => {
   try {
@@ -33,7 +46,6 @@ router.get("/users", async (req, res, next) => {
     next(err);
   }
 });
-
 router.patch("/users/:id/level", async (req, res, next) => {
   try {
     const { level } = req.body || {};
@@ -50,7 +62,6 @@ router.patch("/users/:id/level", async (req, res, next) => {
     next(err);
   }
 });
-
 // ===== Packages =====
 router.get("/packages", async (req, res, next) => {
   try {
@@ -60,7 +71,6 @@ router.get("/packages", async (req, res, next) => {
     next(err);
   }
 });
-
 router.patch("/packages/:id", async (req, res, next) => {
   try {
     const { name, price, active } = req.body || {};
@@ -81,7 +91,6 @@ router.patch("/packages/:id", async (req, res, next) => {
     next(err);
   }
 });
-
 // ===== Prompts / Gems =====
 router.get("/prompts", async (req, res, next) => {
   try {
@@ -91,20 +100,23 @@ router.get("/prompts", async (req, res, next) => {
     next(err);
   }
 });
-
 router.patch("/prompts/:id", async (req, res, next) => {
   try {
-    const { title, category, description, gem_url, level_required } = req.body || {};
+    const { title, category, description, gem_url, image_url, level_required } = req.body || {};
+    if (category !== undefined && !VALID_CATEGORIES.includes(category)) {
+      return res.status(400).json({ error: `หมวดหมู่ต้องเป็นหนึ่งใน: ${VALID_CATEGORIES.join(", ")}` });
+    }
     const prompt = await get("SELECT * FROM prompts WHERE id = ?", [req.params.id]);
     if (!prompt) return res.status(404).json({ error: "ไม่พบ Prompt นี้" });
     await run(
-      `UPDATE prompts SET title = ?, category = ?, description = ?, gem_url = ?, level_required = ?
+      `UPDATE prompts SET title = ?, category = ?, description = ?, gem_url = ?, image_url = ?, level_required = ?
        WHERE id = ?`,
       [
         title ?? prompt.title,
         category ?? prompt.category,
         description ?? prompt.description,
         gem_url !== undefined ? gem_url : prompt.gem_url,
+        image_url !== undefined ? image_url : prompt.image_url,
         level_required ?? prompt.level_required,
         req.params.id,
       ]
@@ -115,17 +127,19 @@ router.patch("/prompts/:id", async (req, res, next) => {
     next(err);
   }
 });
-
 router.post("/prompts", async (req, res, next) => {
   try {
-    const { id, title, category, description, gem_url, level_required } = req.body || {};
+    const { id, title, category, description, gem_url, image_url, level_required } = req.body || {};
     if (!id || !title || !category) {
       return res.status(400).json({ error: "ต้องระบุ id, title, category เป็นอย่างน้อย" });
     }
+    if (!VALID_CATEGORIES.includes(category)) {
+      return res.status(400).json({ error: `หมวดหมู่ต้องเป็นหนึ่งใน: ${VALID_CATEGORIES.join(", ")}` });
+    }
     await run(
-      `INSERT INTO prompts (id, category, title, description, gem_url, level_required)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [id, category, title, description || "", gem_url || null, level_required || 2]
+      `INSERT INTO prompts (id, category, title, description, gem_url, image_url, level_required)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [id, category, title, description || "", gem_url || null, image_url || null, level_required || 2]
     );
     await logAction(req.userId, "CREATE_PROMPT", `prompt:${id}`, `เพิ่ม Gem ใหม่ ${title}`);
     res.json({ ok: true, message: `เพิ่ม Gem "${title}" สำเร็จ` });
@@ -133,7 +147,6 @@ router.post("/prompts", async (req, res, next) => {
     next(err);
   }
 });
-
 // ===== Audit Logs =====
 router.get("/audit-logs", async (req, res, next) => {
   try {
@@ -148,5 +161,4 @@ router.get("/audit-logs", async (req, res, next) => {
     next(err);
   }
 });
-
 module.exports = router;
