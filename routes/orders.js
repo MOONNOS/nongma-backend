@@ -2,21 +2,28 @@ const express = require("express");
 const { get, all, run } = require("../db");
 const { requireAuth } = require("../middleware/auth");
 const router = express.Router();
-
 router.post("/", requireAuth, async (req, res, next) => {
   try {
     const { package_id } = req.body || {};
     if (!package_id) return res.status(400).json({ error: "ต้องระบุ package_id" });
-
     const pkg = await get("SELECT * FROM packages WHERE id = ? AND active = 1", [package_id]);
     if (!pkg) return res.status(404).json({ error: "ไม่พบแพ็กเกจนี้" });
+
+    const user = await get("SELECT level FROM users WHERE id = ?", [req.userId]);
+    if (!user) return res.status(404).json({ error: "ไม่พบบัญชีผู้ใช้นี้" });
+
+    // ซื้อได้เฉพาะแพ็กเกจที่ "สูงกว่า" ระดับปัจจุบันเท่านั้น กันซื้อซ้ำ/ซื้อแพ็กเกจที่ต่ำกว่าที่มีอยู่แล้ว
+    if (pkg.level <= user.level) {
+      return res.status(409).json({
+        error: "คุณมีระดับสมาชิกนี้อยู่แล้ว หรือสูงกว่าแพ็กเกจนี้แล้ว ไม่สามารถซื้อซ้ำหรือซื้อแพ็กเกจที่ต่ำกว่าระดับปัจจุบันได้",
+      });
+    }
 
     const existing = await get(
       "SELECT id FROM orders WHERE user_id = ? AND package_id = ? AND status = 'pending'",
       [req.userId, package_id]
     );
     if (existing) return res.status(409).json({ error: "คุณมีคำสั่งซื้อแพ็กเกจนี้ค้างรออนุมัติอยู่แล้ว" });
-
     const result = await run(
       "INSERT INTO orders (user_id, package_id, status) VALUES (?, ?, 'pending')",
       [req.userId, package_id]
@@ -30,7 +37,6 @@ router.post("/", requireAuth, async (req, res, next) => {
     next(err);
   }
 });
-
 router.get("/", requireAuth, async (req, res, next) => {
   try {
     const orders = await all(
@@ -44,5 +50,4 @@ router.get("/", requireAuth, async (req, res, next) => {
     next(err);
   }
 });
-
 module.exports = router;
