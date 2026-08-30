@@ -147,6 +147,40 @@ router.post("/prompts", async (req, res, next) => {
     next(err);
   }
 });
+// ===== AI Assistants (ผู้ช่วย AI 6 ตัว) =====
+router.get("/assistants", async (req, res, next) => {
+  try {
+    const assistants = await all("SELECT * FROM ai_assistants ORDER BY sort_order ASC");
+    res.json(assistants);
+  } catch (err) {
+    next(err);
+  }
+});
+router.patch("/assistants/:id", async (req, res, next) => {
+  try {
+    const { name, role, icon, description, tool_url, level_required, status } = req.body || {};
+    const assistant = await get("SELECT * FROM ai_assistants WHERE id = ?", [req.params.id]);
+    if (!assistant) return res.status(404).json({ error: "ไม่พบผู้ช่วย AI นี้" });
+    await run(
+      `UPDATE ai_assistants SET name = ?, role = ?, icon = ?, description = ?, tool_url = ?, level_required = ?, status = ?
+       WHERE id = ?`,
+      [
+        name ?? assistant.name,
+        role ?? assistant.role,
+        icon ?? assistant.icon,
+        description ?? assistant.description,
+        tool_url !== undefined ? tool_url : assistant.tool_url,
+        level_required ?? assistant.level_required,
+        status !== undefined ? (status ? 1 : 0) : assistant.status,
+        req.params.id,
+      ]
+    );
+    await logAction(req.userId, "UPDATE_ASSISTANT", `assistant:${req.params.id}`, `แก้ไข ${name ?? assistant.name}`);
+    res.json({ ok: true, message: `อัปเดตผู้ช่วย AI "${name ?? assistant.name}" สำเร็จ` });
+  } catch (err) {
+    next(err);
+  }
+});
 // ===== Audit Logs =====
 router.get("/audit-logs", async (req, res, next) => {
   try {
