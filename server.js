@@ -21,7 +21,8 @@ const allowedOrigins = (process.env.CORS_ORIGIN || "")
   .map((s) => s.trim())
   .filter(Boolean);
 app.use(cors({ origin: allowedOrigins.length ? allowedOrigins : true }));
-app.use(express.json());
+// เพิ่ม limit จาก default 100kb เป็น 8mb เพื่อรองรับรูปสลิปโอนเงินที่ส่งมาเป็น base64 (ไฟล์ภาพหลังบีบอัดอาจใหญ่กว่า 100kb มาก)
+app.use(express.json({ limit: "8mb" }));
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);
