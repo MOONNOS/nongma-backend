@@ -147,6 +147,17 @@ router.post("/prompts", async (req, res, next) => {
     next(err);
   }
 });
+router.delete("/prompts/:id", async (req, res, next) => {
+  try {
+    const prompt = await get("SELECT * FROM prompts WHERE id = ?", [req.params.id]);
+    if (!prompt) return res.status(404).json({ error: "ไม่พบ Prompt นี้" });
+    await run("DELETE FROM prompts WHERE id = ?", [req.params.id]);
+    await logAction(req.userId, "DELETE_PROMPT", `prompt:${req.params.id}`, `ลบ ${prompt.title}`);
+    res.json({ ok: true, message: `ลบ Gem "${prompt.title}" แล้ว` });
+  } catch (err) {
+    next(err);
+  }
+});
 // ===== AI Assistants (ผู้ช่วย AI 6 ตัว) =====
 router.get("/assistants", async (req, res, next) => {
   try {
