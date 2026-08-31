@@ -136,6 +136,10 @@ router.post("/prompts", async (req, res, next) => {
     if (!VALID_CATEGORIES.includes(category)) {
       return res.status(400).json({ error: `หมวดหมู่ต้องเป็นหนึ่งใน: ${VALID_CATEGORIES.join(", ")}` });
     }
+    const existing = await get("SELECT id FROM prompts WHERE id = ?", [id]);
+    if (existing) {
+      return res.status(400).json({ error: `ID "${id}" ถูกใช้ไปแล้ว (อาจเพิ่มสำเร็จไปแล้วรอบก่อนหน้า ลองเช็คในรายการ Gem ก่อน) กรุณาตั้ง ID ใหม่ที่ไม่ซ้ำ` });
+    }
     await run(
       `INSERT INTO prompts (id, category, title, description, gem_url, image_url, level_required)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
