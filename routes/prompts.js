@@ -1,7 +1,38 @@
 const express = require("express");
-const { get, all } = require("../db");
+const { get, all, run } = require("../db");
 const { optionalAuth } = require("../middleware/auth");
 const router = express.Router();
+
+// หมวดหมู่ Gem ที่ใช้งานจริงมี 4 หมวดนี้เท่านั้น
+const VALID_CATEGORIES = ["creative", "image", "product", "video"];
+
+// ============================================================
+// ล้าง Gem เก่าที่หมวดหมู่ไม่อยู่ใน 4 หมวดข้างบน (พวกหมวดภาษาไทย: อนิเมะ ธรรมชาติ ไซไฟ ฯลฯ)
+// ทำงานเองอัตโนมัติทุกครั้งที่เซิร์ฟเวอร์เริ่มทำงาน ไม่ต้องกดปุ่มอะไรเลย
+// Gem ที่เพิ่มผ่านหน้า Admin จะเป็น 1 ใน 4 หมวดเสมอ จึงไม่โดนลบแน่นอน
+//
+// >>> ใช้เสร็จแล้วลบบล็อกนี้ทิ้งได้เลย (ตั้งแต่บรรทัด === ถึง === ข้างล่าง) <<<
+// ============================================================
+(async () => {
+  try {
+    const rows = await all("SELECT id, title, category FROM prompts");
+    const stale = rows.filter(
+      (r) => !VALID_CATEGORIES.includes(String(r.category || "").trim())
+    );
+    if (!stale.length) {
+      console.log("[prompts] ตรวจแล้ว ไม่มี Gem หมวดเก่าค้างอยู่");
+      return;
+    }
+    for (const row of stale) {
+      await run("DELETE FROM prompts WHERE id = ?", [row.id]);
+      console.log(`[prompts] ลบ Gem หมวดเก่า: "${row.title}" (หมวด: ${row.category})`);
+    }
+    console.log(`[prompts] ล้าง Gem หมวดเก่าเรียบร้อย รวม ${stale.length} รายการ`);
+  } catch (err) {
+    console.error("[prompts] ล้าง Gem หมวดเก่าไม่สำเร็จ:", err);
+  }
+})();
+// ============================================================
 
 router.get("/", optionalAuth, async (req, res, next) => {
   try {
