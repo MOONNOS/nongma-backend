@@ -15,6 +15,7 @@ const adminPanelRoutes = require("./routes/admin-panel");
 const communityRoutes = require("./routes/community");
 const notificationRoutes = require("./routes/notifications");
 const passwordResetRoutes = require("./routes/password-reset");
+const analyticsRoutes = require("./routes/analytics");
 const app = express();
 const allowedOrigins = (process.env.CORS_ORIGIN || "")
   .split(",")
@@ -37,6 +38,7 @@ app.use("/api/admin-panel", adminPanelRoutes);
 app.use("/api/community", communityRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/auth", passwordResetRoutes);
+app.use("/api/analytics", analyticsRoutes);
 app.use((err, req, res, next) => {
   console.error(err);
   res.status(500).json({ error: "เกิดข้อผิดพลาดที่เซิร์ฟเวอร์" });
